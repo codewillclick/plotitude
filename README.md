@@ -14,6 +14,19 @@ Options
     - error
     - critical
 
+### Installation
+
+#### Requirements
+. written in Python 2.7 (may include 3.\* in the future)
+
+#### Install steps
+
+Just git clone, and you're set.  Maybe symlink _plotitude_ into `/usr/local/bin`?
+
+#### Extra considerations
+
+If using *gnuplot*, the default *yum* install package on Amazon Linux may not include the *X11* terminal.  If building gnuplot, oneself, take the argument _--with-x_ into account.  As such: `./configure --with-x`... along with whatever other options you please.
+
 ### Design details
 
 #### Script file
