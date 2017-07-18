@@ -33,8 +33,8 @@ pause -1
 set datafile separator ","
 set key autotitle columnhead
 set term x11 2
-plot "randoo.csv" using 1:3
-set term x11 3
-plot "randoo.csv" using 2:3
+set dgrid3d 50,50
+set hidden3d
+splot "randoo.csv" using 1:2:3 with lines
 pause -1
 
