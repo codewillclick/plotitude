@@ -16,6 +16,7 @@ Options
 
 ### Design details
 
+#### Script file
 There are three parallel blocks in a \*.tude script.
 - source evaluation
 - column expansion
@@ -54,6 +55,55 @@ There can be any number of expand blocks, as well, which run a series of python 
 There can be any number of plot blocks.  These are not named, and do not have output files.  They must work with what files have been generated or already happen to exist.  Each treats its trailing lines as a Here file, supplying that to the provided plotting command (_gnuplot_ in this case).  And finally, these too run in parallel.
 
 All blocks with output files must carry unique output file names.
+
+#### Expansion functions
+
+All listed and imported expansion python modules provide a flat list of functions for use in the Expansion step.  Take this, for instance.
+
+```python
+#!/usr/bin/env python
+
+import math
+import logging as L
+
+def dist(t,r,enum,args):
+        kx,ky = args[0:2]
+        a = int(r[enum[kx]])
+        b = int(r[enum[ky]])
+        key = '_'.join(['dist',kx,ky])
+        t[key] = math.sqrt(a*a + b*b)
+        return ((key,t[key]),)
+
+def flat(t,r,enum,args):
+        kv = args[0]
+        key = 'flat_' + kv
+        t[key] = int(float(r[enum[kv]]))
+        return ((key,t[key]),)
+
+
+if __name__ == '__main__':
+        import sys
+
+        print "Shouldn't be running this as __main__, yo!"
+```
+
+Here are listed two functions, _dist_ and _flat_, which take the format...
+
+- `func(t,r,enum,args)`
+  - Arguments:
+    - t: OrderedDict passed through to gather new columns and values
+    - r: list representing a tokenized/split row string
+      - this may be addressed in the future, given how slow that makes things in the face of tables thousands of columns wide
+      - new columns are added as the function chain progresses
+    - enum: OrderedDict storing key-value pairs of \<column-name\>:\<row-index\>.
+      - also grows as the function chain progresses
+    - args: arguments provided the function from the expand block
+      - these ought be assumed column names
+  - Returns:
+    - a list of (\<column-name\>:\<value\>) pairs
+    - return values are directly used to expand both _r_ and _enum_, so this is a must.
+
+(Note this is the first draft of this specification/methodology and may be subject to change.)
 
 ### Changelog
 
