@@ -110,7 +110,7 @@ Here are listed two functions, _dist_ and _flat_, which take the format...
 #### v0.1
 
 New features
-- plotitude module funcitonal
+- plotitude module functional
 - runs initial example script to satisfaction
 
 Bug fixes
