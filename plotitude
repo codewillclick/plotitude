@@ -270,6 +270,7 @@ if __name__ == '__main__':
 	import os
 	import sys
 	
+	# Allow for grabbing modules from the current directory.
 	sys.path.append('.')
 	
 	debug = 'INFO'
