@@ -50,7 +50,7 @@ pause -1
 
 There can be one or more source blocks.  Each will run its trailing lines in order, outputting to the provided file name.  These run in parallel, waiting until completion of each before proceeding to Expansion.
 
-There can be any number of expand blocks, as well, which run a series of python functions in listed order against every table row from their respective input files.  New columns are to be provided within these functions.  These also run in parallel until each's completion before Rendering.
+There can be any number of expand blocks, as well, which run a series of python functions in listed order against every table row from their respective input files.  New columns are to be provided within these functions.  Multiple modules in the block's third token are comma-delimited.  These also run in parallel until each's completion before Rendering.
 
 There can be any number of plot blocks.  These are not named, and do not have output files.  They must work with what files have been generated or already happen to exist.  Each treats its trailing lines as a Here file, supplying that to the provided plotting command (_gnuplot_ in this case).  And finally, these too run in parallel.
 
