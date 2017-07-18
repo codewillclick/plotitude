@@ -23,7 +23,7 @@ There are three parallel blocks in a \*.tude script.
 - plot rendering
 
 Take this example, for instance:
-```
+```ini
 [source:randy.csv]
 python randplot.py 0 100 34
 
