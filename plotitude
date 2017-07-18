@@ -1,0 +1,291 @@
+#!/usr/bin/env python
+
+"""
+author: Cesar A. Longoria II
+copyright: 2017-2018
+version: 0.1
+
+This module is meant to simplify organization and parallel execution of data
+creation, expansion, and rendering.
+
+Version is at 0.1, as this is the first pass-through.  Will hold here until
+there is need for greater efficiency.
+"""
+
+import iters
+
+import os
+import re
+import math
+import time
+import tempfile
+import importlib
+import threading
+import logging as L
+import itertools as it
+import subprocess as P
+from collections import OrderedDict
+
+class plotitude(object):
+	# { vim fold
+	
+	def __init__(self,stream):
+		
+		self._sources = {}
+		self._expands = {}
+		self._plots = [] # plots aren't named, just executed asynchronously
+		
+		for block in iters.iter_block(
+				lambda s:re.match(r'^[[^:]+',s),
+				(s[:-1] for s in stream if re.match(r'^[^#\n]',s)) ):
+			self._process_block(block)
+		
+		L.debug(self._sources)
+		L.debug(self._expands)
+		L.debug(self._plots)
+	
+	def evaluate(self):
+		L.info('Evaluating...')
+		self.eval_sources()
+		self.eval_expands()
+		self.eval_plots()
+	
+	def eval_sources(self):
+		# { vim fold
+		L.info('Evaluating Sources...')
+		t = self._sources
+		class thang(threading.Thread):
+			def __init__(self,f,command):
+				threading.Thread.__init__(self)
+				# Force relative path here until temporary file placement is decided.
+				f = open('.'+os.sep+f,'w') if type(f) is str else f
+				self.file = f
+				self.command = command
+			def run(self):
+				L.debug('Source thread for (%s) running'%(self.file.name,))
+				# NOTE: This obviously can't handle spaces in or out of quoted strings.
+				#   May just decide to use shell=True, but we'll go with this for the
+				#   moment.
+				p = P.Popen(re.split(r' +',self.command),shell=False,stdout=self.file)
+				p.wait()
+				if not self.file.closed:
+					self.file.close()
+				L.debug('Source thread for (%s) ended'%(self.file.name,))
+		threads = []
+		try:
+			for k,v in t.iteritems():
+				for command in v:
+					dothe = thang(k,command)
+					threads.append(dothe)
+					dothe.start()
+		finally:
+			for th in threads:
+				th.join()
+		
+		# One last check to be sure all source output files are in order.  Will
+		# raise an exception, otherwise.
+		bad = []
+		for fname in t.iterkeys():
+			# ASSUME: that fname was already a relative path.
+			if not os.path.isfile(fname):
+				bad.append(fname)
+		if len(bad) > 0:
+			raise Exception('files (%s) were not generated.' % ('\n'.join('\n'+fname),))
+		# }
+	
+	def eval_expands(self):
+		# { vim fold
+		L.info('Evaluating Expansions...')
+		t = self._expands
+		
+		threads = []
+		try:
+			for k,v in t.iteritems():
+				source = v['source']
+				imports = v['imports']
+				chain = v['chain']
+				target = k
+				
+				# TODO: Place checks on things like available modules before evaluation
+				#   of any portion of the plotitude object.  Or perhaps in an assertion
+				#   method.  Here, for example, an ImportError may be raised.  Better to
+				#   do this before evaluation of the source data.
+				
+				# 'imports' strings to module objects.
+				imports = map(lambda s:importlib.import_module(s),imports)
+				
+				class priorityhasattr(object):
+					def __init__(self,src):
+						self.srcs = list(src)
+					def __getitem__(self,k):
+						for a in self.srcs:
+							if hasattr(a,k):
+								return getattr(a,k)
+						raise AttributeError('no attribute (%s) in list'%(k,))
+				
+				phas = priorityhasattr(imports)
+				
+				chain = map(lambda a:(phas[a[0]],a[1:]),chain) # to (func,args)
+				
+				def gen_enum(line,sep=','):
+					tokens = line.split(sep)
+					return OrderedDict(zip(tokens,xrange(len(tokens))))
+	
+				class perfile(threading.Thread):
+					def __init__(self,f,src,chain,sep=','):
+						threading.Thread.__init__(self)
+						self._close_src = False
+						# Force relative path here until temporary file placement is decided
+						f = open('.'+os.sep+f,'w') if type(f) is str else f
+						if type(src) is str:
+							src = open(src,'r')
+							self._close_src = True
+						self.file = f
+						self.src = src
+						self.enum = gen_enum(self.src.readline()[:-1],sep=sep) # OrderedDict
+						L.debug('enum: '+str(self.enum))
+						# ^ first line absorbed
+						self.chain = chain
+						self.sep = sep
+					def run(self):
+						L.debug('Expansion thread for (%s) running'%(self.file.name,))
+						i = 0
+						for line in self.src:
+							line = line[:-1]
+							newcols = OrderedDict()
+							row = line.split(self.sep)
+							# Here, the chain is finally enacted...
+							for func,args in self.chain:
+								added = func(newcols,row,self.enum,args)
+								for ncol,val in added:
+									self.enum[ncol] = len(row)
+									row.append(val)
+							# ... and new columns are appended to the line.
+							# NOTE: Must output column names, if the first line.  New column
+							#   names ought be identically named and ordered per line.  Also,
+							#   has to be done here, since newcols is needed.
+							if i == 0:
+								# I hate these once-only if-statements in-loop, though.
+								self.file.write(self.sep.join(self.enum.iterkeys()) + '\n')
+							self.file.write(self.sep.join(it.imap(str,row)) + '\n')
+							i += 1
+						if not self.file.closed:
+							self.file.close()
+						if self._close_src and not self.src.closed:
+							self.src.close()
+						L.debug('Expansion thread for (%s) ended'%(self.file.name,))
+				
+				pf = perfile(target,source,chain)
+				threads.append(pf)
+				pf.start()
+				
+				L.debug('imports: '+str(imports))
+				L.debug('chain: '+str(chain))
+		finally:
+			for th in threads:
+				th.join()
+		# }
+	
+	def eval_plots(self):
+		# { vim fold
+		L.info('Evaluating Plots...')
+		
+		# NOTE: Trying out Thread(target=...), this time, as opposed to creating a
+		#   new class on the fly.
+		def asyncplot(prog,text,temps):
+			L.debug('Plot thread running')
+			L.debug('text:\n'+text)
+			L.debug(('plot',prog))
+			fname = '%s.%i.plot' % (prog,len(temps))
+			temps.append(fname)
+			f = open(fname,'w')
+			f.write(text+'\n')
+			f.close()
+			try:
+				if re.search(r'[;&|]',prog):
+					raise Exception('Dangerous plot program name: %s'%(prog,))
+				# NOTE: Passing in the text as a pipe into stdin does *not* work, for
+				#   whatever reason.  Takes the first character of the line following
+				#   the plot command and consistently trims off the first character,
+				#   resulting in a '"rint" is not a command' for a print command, for
+				#   example.
+				p = P.Popen([prog,fname])
+				p.wait()
+			finally:
+				pass
+			L.debug('Plot thread ended')
+		
+		temps = []
+		threads = []
+		try:
+			for program,scripttext in self._plots:
+				th = threading.Thread(target=asyncplot,args=(program,scripttext,temps))
+				threads.append(th)
+				th.start()
+		finally:
+			for th in threads:
+				th.join()
+			for fpath in temps:
+				if os.path.isfile(fpath):
+					os.remove(fpath)
+		# }
+	
+	# { syntax block processing, vim fold
+	def _process_block(self,block):
+		key = re.match(r'^\[([^:\]]+)[:\]]',block[0]).group(1)
+		{
+			'source':self._process_source,
+			'expand':self._process_expand,
+			'plot':self._process_plot
+		}[key](block)
+	
+	def _process_source(self,block):
+		tokens = re.sub(r'^\s*\[([^\]]*)\].*',r'\1',block[0]).split(':')
+		fname = tokens[1]
+		self._sources[fname] = []
+		for s in it.islice(block,1,None):
+			self._sources[fname].append(s)
+	
+	def _process_expand(self,block):
+		tokens = re.sub(r'^\s*\[([^\]]*)\].*',r'\1',block[0]).split(':')
+		fname = tokens[1]
+		self._expands[fname] = {
+			'source':re.split(r'\s*<-\s*',block[0])[1].strip(),
+			'imports':map(lambda s:s.strip(),re.split(r'\s*,\s*',tokens[2])),
+			'chain':[],
+		}
+		t = self._expands[fname]
+		for s in it.islice(block,1,None):
+			t['chain'].append(tuple(re.split(r'\s+',s)))
+	
+	def _process_plot(self,block):
+		tokens = re.sub(r'^\s*\[([^\]]*)\].*',r'\1',block[0]).split(':')
+		program = tokens[1]
+		self._plots.append((program,'\n'.join(block[1:])))
+	# }
+	# }
+
+
+if __name__ == '__main__':
+	import os
+	import sys
+	
+	sys.path.append('.')
+	
+	debug = 'INFO'
+	if '--loglevel' in sys.argv:
+		debug = sys.argv[sys.argv.index('--loglevel')+1]
+	
+	L.basicConfig(
+		level=L.getLevelName(debug.upper()),
+		format='%(threadName)s %(levelname)s: %(message)s')
+	
+	# TODO: usage error message on bad exit.
+	if len(sys.argv) < 2:
+		raise Exception('Target path is necessary.')
+	
+	targetpath = os.path.abspath(sys.argv[1])
+	
+	p = plotitude(open(targetpath,'r'))
+	p.evaluate()
+

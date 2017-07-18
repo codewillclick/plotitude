@@ -1,0 +1,40 @@
+# Most of this could have been done easily enough in a shell script.  The best
+# use of plotitude is that which takes advantage of heavy column expansion
+# through python functions.
+
+# Source data generation is executed asynchronously.  Maybe an exception will be
+# necessary for compute-heavy processes, though...  Anywho.
+[source:randy.csv]
+python randplot.py 0 100 34
+
+# Passes a dict through a chain of python functions, of the format...
+#   func(t,r,enum,*args)
+# ... where...
+#   t: a dict such that {new_column:<value>,...}, passed through the chain
+#   r: a list of the current row's values (slow, may optimize with a C extension
+#      at a later time, maybe a relevant-key/string-index pairing?)
+#   enum: a dict mapping column name to row list index
+#   args: list of column names to utilize/combine/whatnot
+# Must return a list of new (column-name,value)-s.
+[expand:randoo.csv: expandoo] <- randy.csv
+dist x y
+flat dist_x_y
+
+# These are executed against... the shell?  Saved as temporary files and fired
+# off as scripts, as asynchronous subprocesses.  ...  More-or-less.
+[plot:gnuplot]
+set term x11 1
+set datafile separator ","
+set key autotitle columnhead
+plot "randy.csv"
+pause -1
+
+[plot:gnuplot]
+set datafile separator ","
+set key autotitle columnhead
+set term x11 2
+plot "randoo.csv" using 1:3
+set term x11 3
+plot "randoo.csv" using 2:3
+pause -1
+
