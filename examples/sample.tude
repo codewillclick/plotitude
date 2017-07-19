@@ -20,13 +20,26 @@ python randplot.py 0 100 34
 dist x y
 flat dist_x_y
 
+# Set variables for plot text replacement, here.  Not sure if this departs far
+# enough from the aim of simplicity to decry plotitude's point, but oh well.
+# The array case statement is such:  ?term=$OS| s1 | s2 | ...
+#   ?       indicates an array sub
+#   term    variable name
+#   $OS     maps to an predetermined environment variable (not shell env)
+#   |s|...  delimited by "|", takes the first value as the index and subs with
+#           that
+# The "sep=," statment just assigns "," to variable "sep".
+[set]
+?term=$OS|x11|wxt
+sep=,
+
 # These are executed against... the shell?  Saved as temporary files and fired
 # off as scripts, as asynchronous subprocesses.  ...  More-or-less.
-[plot:gnuplot]
-set term x11 1
-set datafile separator ","
+[plot:gnuplot] <- randy.csv,(@+1)
+set term @<term> 1
+set datafile separator "@<sep>"
 set key autotitle columnhead
-plot "randy.csv"
+plot "randy.csv" using @x:sin(@y)
 pause -1
 
 [plot:gnuplot]
