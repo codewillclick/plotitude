@@ -3,13 +3,10 @@
 """
 author: Cesar A. Longoria II
 copyright: 2017-2018
-version: 0.1
+version: 0.2.0
 
 This module is meant to simplify organization and parallel execution of data
 creation, expansion, and rendering.
-
-Version is at 0.1, as this is the first pass-through.  Will hold here until
-there is need for greater efficiency.
 """
 
 import iters

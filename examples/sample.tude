@@ -39,7 +39,7 @@ sep=,
 set term @<term> 1
 set datafile separator "@<sep>"
 set key autotitle columnhead
-plot "randy.csv" using @x:sin(@y)
+plot "randy.csv" using @x:@y
 pause -1
 
 [plot:gnuplot] <- randoo.csv
