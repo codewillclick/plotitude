@@ -45,7 +45,7 @@ pause -1
 [plot:gnuplot]
 set datafile separator ","
 set key autotitle columnhead
-set term x11 2
+set term @<term> 2
 set dgrid3d 50,50
 set hidden3d
 splot "randoo.csv" using 1:2:3 with lines
