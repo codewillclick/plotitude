@@ -182,7 +182,19 @@ Here are listed two functions, _dist_ and _flat_, which take the format...
 
 ### Changelog
 
-#### v0.1
+#### v0.2.1
+
+New features
+- set block
+- system environment variables for set block
+- variable insertion into plot block
+- column index replacement in plot block
+
+Misc notes
+- still imperfect, but now more dynamic
+- updated README after v0.2.0 commit, so incrementing patch version and updating Release
+
+#### v0.1.0
 
 New features
 - plotitude module functional
