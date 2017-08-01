@@ -1,0 +1,23 @@
+
+[source:probs_4-12.csv]
+python diceprob.py 4-20 4-20
+
+[set]
+?term=$OS|x11|wxt
+sep=,
+r1=4
+r2=20
+
+[plot:gnuplot] <- probs_4-12.csv, (@+1)
+set term @<term>
+set datafile separator "@<sep>"
+set key autotitle columnhead
+set xlabel "A"
+set ylabel "B"
+set zlabel "Win"
+set xrange [@<r1>:@<r2>]
+set yrange [@<r1>:@<r2>]
+set zrange [0:1]
+splot "probs_4-12.csv" using @a:@b:@win
+pause -1
+
