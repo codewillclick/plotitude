@@ -18,6 +18,6 @@ set zlabel "Win"
 set xrange [@<r1>:@<r2>]
 set yrange [@<r1>:@<r2>]
 set zrange [0:1]
-splot "probs_4-12.csv" using @a:@b:@win
+splot "probs_4-12.csv" using @a:@b:@win, "probs_4-12.csv" using @a:@b:@tie
 pause -1
 
