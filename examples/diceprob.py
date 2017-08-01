@@ -21,34 +21,61 @@ if __name__ == '__main__':
 	import sys
 	import itertools as it
 	
-	def to_range(s):
+	def to_iterer(s):
 		m = re.match(r'^(\d+)-(\d+)$',s)
 		if m:
-			return int(m.group(1)), int(m.group(2))
+			def f():
+				return xrange(int(m.group(1)), int(m.group(2)))
+			return f
 		m = re.match(r'^(\d+)$',s)
 		if m:
-			return int(m.group(1)), int(m.group(1))
+			def f():
+				return xrange(int(m.group(1)), int(m.group(1)))
+			return f
+		m = re.match(r'^((\d+,)+?\d+)$',s)
+		if m:
+			r = m.group(1).split(',')
+			def f():
+				return (int(s) for s in r)
+			return f
 		raise Exception('Does not match "a" or "a-b"')
 	
 	sep = ','
 	buffered = False
-	a = to_range(sys.argv[-2])
-	b = to_range(sys.argv[-1])
+	percent = False
 	if '-s' in sys.argv:
 		sep = sys.argv[sys.argv.index('-s')+1]
 	if '-b' in sys.argv:
 		buffered = True
+	if '-p' in sys.argv:
+		percent = True
+	a = to_iterer(sys.argv[-2])
+	b = to_iterer(sys.argv[-1])
 	
 	def these(a,b):
-		for i in xrange(a[0],a[1]+1):
-			for j in xrange(b[0],b[1]+1):
+		# a,b return iterables.
+		for i in a():
+			for j in b():
 				r = versus(i,j)
 				yield (i,j,r[0],r[1],r[2])
 	
-	def those(a,b):
+	def thoseA(a,b):
 		yield sep.join(['a','b','win','lose','tie'])
 		for r in these(a,b):
 			yield sep.join(map(str,r))
+	
+	def thoseB(a,b):
+		yield sep.join(['a','b','win','lose','tie'])
+		for a,b,win,lose,tie in these(a,b):
+			yield sep.join((
+				str(a),
+				str(b),
+				str(int(win*100))+'%',
+				str(int(lose*100))+'%',
+				str(int(tie*100))+'%'
+			))
+	
+	those = thoseB if percent else thoseA
 	
 	if not buffered:
 		for s in those(a,b):
