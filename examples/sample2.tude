@@ -2,6 +2,9 @@
 [source:probs_4-12.csv]
 python diceprob.py 4-20 4-20
 
+[source:probs_4-100.csv]
+python diceprob.py 4-100 4-100
+
 [set]
 ?term=$OS|x11|wxt
 sep=,
@@ -19,5 +22,26 @@ set xrange [@<r1>:@<r2>]
 set yrange [@<r1>:@<r2>]
 set zrange [0:1]
 splot "probs_4-12.csv" using @a:@b:@win, "probs_4-12.csv" using @a:@b:@tie
+pause -1
+
+[plot:gnuplot] <- probs_4-100.csv, (@+1)
+set term @<term>
+set datafile separator "@<sep>"
+set key autotitle columnhead
+set xlabel "B, if A=4,6,8,12,20"
+set ylabel "B Win"
+set xrange [4:100]
+set yrange [0:1]
+plot \
+	"probs_4-100.csv" using ($@a == 4 ? $@b : 1/0):@lose with lines title "A=4", \
+	"probs_4-100.csv" using ($@a == 6 ? $@b : 1/0):@lose with lines title "A=6", \
+	"probs_4-100.csv" using ($@a == 8 ? $@b : 1/0):@lose with lines title "A=8", \
+	"probs_4-100.csv" using ($@a == 12 ? $@b : 1/0):@lose with lines title "A=12", \
+	"probs_4-100.csv" using ($@a == 20 ? $@b : 1/0):@lose with lines title "A=20"
+#	(x-1)/(2*4) with lines title "f4(x)", \
+#	(x-1)/(2*6) with lines title "f6(x)", \
+#	(x-1)/(2*8) with lines title "f8(x)", \
+#	(x-1)/(2*12) with lines title "f12(x)", \
+#	(x-1)/(2*20) with lines title "f20(x)"
 pause -1
 
