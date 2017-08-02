@@ -14,7 +14,13 @@ def versus(a,b):
 		map(lambda a:float(a)/t, [win,lose,tie]) \
 		if a > b else \
 		map(lambda a:float(a)/t, [lose,win,tie])
-	
+
+def maxprob(d,n,v):
+	return pow(v,n)/float(pow(d,n))
+def maxchance(d,n,v):
+	v = float(v)
+	return (v/d)**n - ((v-1)/d)**n
+	#return maxprob(d,n,v)-maxprob(d,n,v-1)
 
 if __name__ == '__main__':
 	import re

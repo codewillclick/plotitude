@@ -1,0 +1,31 @@
+
+[source:maxes.csv]
+python dicemax.py
+
+[set]
+?term=$OS|x11|wxt
+sep=,
+
+[plot:gnuplot] <- maxes.csv, (@+1)
+set term @<term>
+set datafile separator "@<sep>"
+set key autotitle columnhead
+splot \
+	"maxes.csv" using ($@d == 4 ? $@d : 1/0):@v:@mxchance with lines title "D=4", \
+	"maxes.csv" using ($@d == 6 ? $@d : 1/0):@v:@mxchance with lines title "D=6", \
+	"maxes.csv" using ($@d == 8 ? $@d : 1/0):@v:@mxchance with lines title "D=8", \
+	"maxes.csv" using ($@d == 12 ? $@d : 1/0):@v:@mxchance with lines title "D=12", \
+	"maxes.csv" using ($@d == 20 ? $@d : 1/0):@v:@mxchance with lines title "D=20"
+pause -1
+
+[plot:gnuplot] <- maxes.csv, (@+1)
+set term @<term>
+set datafile separator "@<sep>"
+set key autotitle columnhead
+plot \
+	"maxes.csv" using ($@d == 4 ? $@v : 1/0):@mxchance  title "D=4", \
+	"maxes.csv" using ($@d == 6 ? $@v : 1/0):@mxchance  title "D=6", \
+	"maxes.csv" using ($@d == 8 ? $@v : 1/0):@mxchance  title "D=8", \
+	"maxes.csv" using ($@d == 12 ? $@v : 1/0):@mxchance title "D=12", \
+	"maxes.csv" using ($@d == 20 ? $@v : 1/0):@mxchance title "D=20"
+pause -1
