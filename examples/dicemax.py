@@ -23,7 +23,7 @@ def maxtable(d,n):
 
 
 # Just a little color...
-# python dicemax.py | awk -F, '$2==2{printf "\033[93m"} $2==3{printf "\033[91m"} $2<=3{print} {printf "\033[0m"}' | column -s, -t | less -R
+# python dicemax.py | awk -F, '$2<=3{print}' | column -s, -t | awk '$2==2{printf "\033[93m"} $2==3{printf "\033[91m"} {print} {printf "\033[0m"}' | column -s, -t | less -RS
 
 if __name__ == '__main__':
 	
