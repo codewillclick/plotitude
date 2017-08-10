@@ -34,7 +34,7 @@ class plotitude(object):
 		self._plots = [] # plots aren't named, just executed asynchronously
 		self._vartable = {}
 		s = platform.system()
-                stable = {'Linux':0,'Windows':1}
+		stable = {'Linux':0,'Windows':1}
 		self._environment = {
 			'OS':stable[s] if s in stable else -1
 		}
@@ -81,10 +81,8 @@ class plotitude(object):
 				#   moment.
 				for line in self.command.split('\n'):
 					L.debug('  running line: '+line)
-					L.debug('  file open: %i'%(not self.file.closed,))
 					p = P.Popen(re.split(r' +',line),shell=False,stdout=self.file)
 					p.wait()
-					L.debug('    and now: %i'%(not self.file.closed,))
 				if not self.file.closed:
 					self.file.close()
 				L.debug('Source thread for (%s) ended'%(self.file.name,))
