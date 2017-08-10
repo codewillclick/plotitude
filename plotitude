@@ -58,12 +58,20 @@ class plotitude(object):
 	def eval_sources(self):
 		# { vim fold
 		L.info('Evaluating Sources...')
-		t = self._sources
 		class thang(threading.Thread):
+			ftable = {}
 			def __init__(self,f,command):
+				# HACK: Throwing this assert here, for now.
+				assert type(f) is str
 				threading.Thread.__init__(self)
-				# Force relative path here until temporary file placement is decided.
-				f = open('.'+os.sep+f,'w') if type(f) is str else f
+				if not f in thang.ftable:
+					thang.ftable[f] = 0
+				if thang.ftable[f] == 0 and os.path.exists(f): # necessary if appending
+					os.remove(f)
+				thang.ftable[f] += 1
+				f = open('.'+os.sep+f,'a') # append to file
+				# NOTE: Forcing relative path.
+				#f = open('.'+os.sep+f,'a') if type(f) is str else f
 				self.file = f
 				self.command = command
 			def run(self):
@@ -71,11 +79,16 @@ class plotitude(object):
 				# NOTE: This obviously can't handle spaces in or out of quoted strings.
 				#   May just decide to use shell=True, but we'll go with this for the
 				#   moment.
-				p = P.Popen(re.split(r' +',self.command),shell=False,stdout=self.file)
-				p.wait()
+				for line in self.command.split('\n'):
+					L.debug('  running line: '+line)
+					L.debug('  file open: %i'%(not self.file.closed,))
+					p = P.Popen(re.split(r' +',line),shell=False,stdout=self.file)
+					p.wait()
+					L.debug('    and now: %i'%(not self.file.closed,))
 				if not self.file.closed:
 					self.file.close()
 				L.debug('Source thread for (%s) ended'%(self.file.name,))
+		t = self._sources
 		threads = []
 		try:
 			for k,v in t.iteritems():
