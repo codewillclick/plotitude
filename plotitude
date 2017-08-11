@@ -16,7 +16,6 @@ import re
 import math
 import time
 import platform
-import tempfile
 import importlib
 import threading
 import logging as L
@@ -32,7 +31,9 @@ class plotitude(object):
 		self._sources = {}
 		self._expands = {}
 		self._plots = [] # plots aren't named, just executed asynchronously
-		self._vartable = {}
+		# NOTE: Had to place a separator variable here, before the blocks are
+		#   processed.
+		self._vartable = {'EXPANDSEP':',','PLOTSEP':','}
 		s = platform.system()
 		stable = {'Linux':0,'Windows':1}
 		self._environment = {
@@ -51,9 +52,12 @@ class plotitude(object):
 	
 	def evaluate(self):
 		L.info('Evaluating...')
+		xsep = self._vartable['EXPANDSEP']
+		psep = self._vartable['PLOTSEP']
+		L.debug('SEPs: %s, %s'%(xsep,psep))
 		self.eval_sources()
-		self.eval_expands()
-		self.eval_plots()
+		self.eval_expands(xsep=xsep,psep=psep)
+		self.eval_plots(sep=psep)
 	
 	def eval_sources(self):
 		# { vim fold
@@ -69,7 +73,7 @@ class plotitude(object):
 				if thang.ftable[f] == 0 and os.path.exists(f): # necessary if appending
 					os.remove(f)
 				thang.ftable[f] += 1
-				f = open('.'+os.sep+f,'a') # append to file
+				f = open('.'+os.sep+f,'ab') # append to file
 				# NOTE: Forcing relative path.
 				#f = open('.'+os.sep+f,'a') if type(f) is str else f
 				self.file = f
@@ -109,7 +113,7 @@ class plotitude(object):
 			raise Exception('files (%s) were not generated.' % ('\n'.join('\n'+fname),))
 		# }
 	
-	def eval_expands(self):
+	def eval_expands(self,xsep=',',psep=','):
 		# { vim fold
 		L.info('Evaluating Expansions...')
 		t = self._expands
@@ -128,6 +132,8 @@ class plotitude(object):
 				#   do this before evaluation of the source data.
 				
 				# 'imports' strings to module objects.
+				imports = filter(lambda s:s,imports)
+				L.debug('imports: '+str(imports))
 				imports = map(lambda s:importlib.import_module(s),imports)
 				
 				class priorityhasattr(object):
@@ -144,11 +150,12 @@ class plotitude(object):
 				chain = map(lambda a:(phas[a[0]],a[1:]),chain) # to (func,args)
 				
 				def gen_enum(line,sep=','):
-					tokens = line.split(sep)
+					tokens = re.split(sep,line)#line.split(sep)
+					L.debug(('gen_enum tokens',tokens))
 					return OrderedDict(zip(tokens,xrange(len(tokens))))
 	
 				class perfile(threading.Thread):
-					def __init__(self,f,src,chain,sep=','):
+					def __init__(self,f,src,chain,insep=',',outsep=','):
 						threading.Thread.__init__(self)
 						self._close_src = False
 						# Force relative path here until temporary file placement is decided
@@ -158,21 +165,25 @@ class plotitude(object):
 							self._close_src = True
 						self.file = f
 						self.src = src
-						self.enum = gen_enum(self.src.readline()[:-1],sep=sep) # OrderedDict
+						self.enum = gen_enum(self.src.readline()[:-1],sep=insep) # OrderedDict
 						L.debug('enum: '+str(self.enum))
 						# ^ first line absorbed
 						self.chain = chain
-						self.sep = sep
+						self.insep = xsep
+						self.outsep = psep
 					def run(self):
 						L.debug('Expansion thread for (%s) running'%(self.file.name,))
 						i = 0
 						for line in self.src:
 							line = line[:-1]
 							newcols = OrderedDict()
-							row = line.split(self.sep)
+							row = [s for s in re.split(self.insep,line) if s != '\r']
+							L.debug(('insep',self.insep,line,row))
 							# Here, the chain is finally enacted...
 							for func,args in self.chain:
+								L.debug(('func,args',func,args))
 								added = func(newcols,row,self.enum,args)
+								L.debug(('    added',added))
 								for ncol,val in added:
 									self.enum[ncol] = len(row)
 									row.append(val)
@@ -182,8 +193,9 @@ class plotitude(object):
 							#   has to be done here, since newcols is needed.
 							if i == 0:
 								# I hate these once-only if-statements in-loop, though.
-								self.file.write(self.sep.join(self.enum.iterkeys()) + '\n')
-							self.file.write(self.sep.join(it.imap(str,row)) + '\n')
+								self.file.write(self.outsep.join(self.enum.iterkeys()) + '\n')
+							#L.debug('expand out row: '+str(row))
+							self.file.write(self.outsep.join(it.imap(str,row)) + '\n')
 							i += 1
 						if not self.file.closed:
 							self.file.close()
@@ -191,7 +203,8 @@ class plotitude(object):
 							self.src.close()
 						L.debug('Expansion thread for (%s) ended'%(self.file.name,))
 				
-				pf = perfile(target,source,chain)
+				L.debug(('xsep,psep',xsep,psep))
+				pf = perfile(target,source,chain,insep=xsep,outsep=psep)
 				threads.append(pf)
 				pf.start()
 				
@@ -202,7 +215,7 @@ class plotitude(object):
 				th.join()
 		# }
 	
-	def eval_plots(self):
+	def eval_plots(self,sep=','):
 		# { vim fold
 		L.info('Evaluating Plots...')
 		
@@ -225,8 +238,7 @@ class plotitude(object):
 						sf = open(s,'r')
 						cols = sf.readline()[:-1]
 						# Update enum with new (column,index) pairs.
-						# WARNING: Forced use of comma as separator, here.
-						enum.update(it.izip(re.split(r'\s*,\s*',cols),it.count()))
+						enum.update(it.izip(re.split(r'\s*'+sep+'\s*',cols),it.count()))
 						sf.close()
 				# Handle '@'-replacements
 				def def_replace_at(enum,modifier):
@@ -239,6 +251,7 @@ class plotitude(object):
 						L.debug(('replace_var',m.groups()))
 						return m.group(1)+vartable[m.group(2)]
 					return replace_var
+				L.debug(('replace_at enum:',enum))
 				replace_at = def_replace_at(enum,at_modifier)
 				replace_var = def_replace_var(vartable)
 				# Replacement happens here.
@@ -341,7 +354,11 @@ class plotitude(object):
 			if x_env.search(line):
 				line = x_env.sub(replace_env,line)
 				L.debug(('line now',line))
-			tokens = re.split(r'\s*=\s*',line,1)
+			# WARNING: Removed lead whitespace exclusion of assignment value.  Once
+			#   handling of quotations and escape-characters is in place, this regex
+			#   can be reverted to its previous state.
+			tokens = re.split(r'\s*=',line,1)
+			#tokens = re.split(r'\s*=\s*',line,1)
 			L.debug(('tokens',tokens))
 			var = tokens[0]
 			value = tokens[1]
